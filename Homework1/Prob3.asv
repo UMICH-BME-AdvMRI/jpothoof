@@ -1,0 +1,200 @@
+clc
+clear
+close all
+
+tbw = 8;
+ts = 2*10^-3; % s
+BWt = tbw/ts; 
+y = 42.58 * 10^6; %Hz/T
+dz = (5 *10^-3); % m
+slew = 180; %T/m/s
+FOV = [256 256]*1.2/1000; %m 
+Gmax = 25/1000; % mT/m
+
+Gs = BWt/(y*dz); %T/m
+
+tramp = Gs/slew;
+Gss = Gs * 1000; %T/m
+Ttot = 2*tramp+ts;
+
+
+%%
+
+T1 = 1000;
+T2 = 100;
+offset = [0 200];
+FA = 90;
+GGs = Gs*10000/100; %Gause/cm
+
+tg = [0:.00001:.004];
+t = [0:.0001:.002];
+x= [-20:.1:20];
+
+grad = zeros([length(tg),1]); %mT/m
+l=0;
+o=0;
+for k = 1:length(tg)
+    if tg(k) <= tramp
+        grad(k) = 1000*slew*tg(k);
+    elseif tg(k)>tramp && tg(k)<=tramp+ts
+        grad(k) = Gss;
+    elseif tg(k)>tramp+ts && tg(k)<=tramp+ts+2*tramp
+        l=l+1;
+        grad(k) = Gss-(1000*slew*k*.00001);
+    elseif tg(k)>tramp+ts+2*tramp && tg(k)<=tramp+2*tramp+ts+ts/2
+        grad(k) = -Gss;
+    elseif tg(k)>tramp+2*tramp+ts+ts/2 && tg(k)<=tramp+2*tramp+ts+ts/2+tramp
+        grad(k) = slew*tg(k);
+    end
+end
+
+figure
+plot(tg,grad)
+title("Zgrad")
+xlabel("Time")
+ylabel("mT/m")
+
+rf = zeros([length(tg),1]);
+for l = 1: length(tg)
+    if tg(l)<=.002
+        rf(l) = sinc(tbw/2*(1000*tg(l)-1));
+    end
+end
+rf90 = rf *1e3* FA/(2*360*(y/10^6)*sum(rf));
+
+figure
+plot(tg,rf90)
+title("90 Degree Rf Pulse")
+xlabel("Time")
+ylabel("B1")
+
+[msig,m] = slicep(rf90,grad/10,tg,T1,T2,x,0);
+[msig2,m3] = slicep(rf90,grad/10,tg,T1,T2,x,offset(2));
+
+figure
+plot(x,abs(msig))
+title("90 Degree Pulse")
+
+figure
+plot(x,abs(msig2))
+
+%%
+FA30 = 30;
+
+FA10 = 10;
+
+rf30 =  rf *1e3* FA30/(2*360*(y/10^6)*sum(rf));
+
+
+rf10 =  rf *1e3* FA10/(2*360*(y/10^6)*sum(rf));
+
+[msig30,m30] = slicep(rf30,grad/10,tg,T1,T2,x,0);
+
+[msig10,m10] = slicep(rf10,grad/10,tg,T1,T2,x,0);
+
+figure
+plot(x,abs(msig30))
+title("30 Degree Pulse")
+
+figure
+plot(x,abs(msig10))
+title("10 Degree Pulse")
+%%
+figure;
+plot(x,m(1,:),'b-',x,m(2,:),'r--',x,m(3,:),'g-.');
+title('Magnetization components')
+xlabel('z position (mm)');
+ylabel('Magnetization');
+legend('Mx','My','Mz');
+
+figure
+subplot(2,1,1)
+plot(x,abs(m(1,:)+1i*m(2,:)))
+title("Magnitude of Mxy")
+subplot(2,1,2)
+plot(x,angle(m(1,:)+1i*m(2,:)))
+title("Phase of Mxy")
+
+%%
+figure
+plot(x,abs(msig),x,fftshift(abs(fft(rf90))))
+title("Slice Profile and FFT 90 Degrees")
+legend("Profile", "FFT")
+figure
+plot(x,abs(msig10),x,fftshift(abs(fft(rf10))))
+title("Slice Profile and FFT 10 Degrees")
+legend("Profile", "FFT")
+
+%% 
+[msig902,m902] = slicep(rf90,grad/10,tg,T1,2,x,0);
+
+figure
+plot(x,abs(msig902))
+title("90 Degree Pulse: T2 = 2")
+
+%%
+[msigR,mR] = slicep(rf90(1:215),grad(1:215)/10,tg(1:215),T1,T2,x,0);
+
+figure
+plot(x,abs(msigR))
+title("90 Degree Pulse:Between Before Rephase")
+
+figure;
+subplot(2,1,1)
+plot(x,mR(1,:),'b-',x,mR(2,:),'r--',x,mR(3,:),'g-.');
+title('Magnetization components: No Rephase')
+xlabel('z position (mm)');
+ylabel('Magnetization');
+legend('Mx','My','Mz');
+
+subplot(2,1,2)
+plot(x,m(1,:),'b-',x,m(2,:),'r--',x,m(3,:),'g-.');
+title('Magnetization components: After Rephase')
+xlabel('z position (mm)');
+ylabel('Magnetization');
+legend('Mx','My','Mz');
+
+figure
+subplot(2,1,1)
+plot(x,abs(mR(1,:)+1i*mR(2,:)))
+title("Magnitude of Mxy")
+subplot(2,1,2)
+plot(x,angle(mR(1,:)+1i*mR(2,:)))
+title("Phase of Mxy")
+
+%%
+
+x2= [-60:.1:60];
+
+
+rf = zeros([length(tg),1]);
+for l = 1: length(tg)
+    if tg(l)<=.002
+        rf(l) = sinc(tbw/2*(1000*tg(l)-1));
+    end
+end
+rf90 = rf *1e3* FA/(2*360*(y/10^6)*sum(rf));
+
+cent = [-50 -25 25 50];
+cent = y * 18*8*1e-3 * cent*1e-3;
+
+cent_f = cos(2*pi*cent'*tg);
+
+for i = 1:length(cent)
+    rf90_multi = rf90 + rf90.*cent_f(i,:);
+end
+
+[msig_multi,m_multi] = slicep(rf90_multi, grad/10,tg, T1,T2,x2,0);
+
+figure
+plot(tg, rf90_multi)
+title("Multislice RF Pulse")
+xlabel('Time (ms)')
+ylabel('B1')
+
+figure
+plot(x2,abs(msig_multi))
+title("Simulated Multislice Pulse")
+xlabel("x mm")
+
+
