@@ -1,0 +1,268 @@
+clc
+clear
+
+T1 = [200:100:1500];
+T2 = [50:30:300];
+t = 1:64;
+nechos = 64;
+
+epg180 = zeros(size(T1,2),size(T2,1),nechos);
+epg120 = zeros(size(T1,2),size(T2,1),nechos);
+epg60 = zeros(size(T1,2),size(T2,1),nechos);
+
+a180 = 2*pi*(180)/360;
+a120 = 2*pi*(120)/360;
+a60 = 2*pi*(60)/360;
+
+for i = 1:length(T1)
+    for j = 1:length(T2)
+        epg180(i,j,:) = epg_cpmg(a180,nechos,T1(i), T2(j),5);
+        epg120(i,j,:) = epg_cpmg(a120,nechos,T1(i), T2(j),5);
+        epg60(i,j,:) = epg_cpmg(a60,nechos,T1(i), T2(j),5);
+    end
+end
+
+epg180 = abs(epg180);
+epg120 = abs(epg120);
+epg60 = abs(epg60);
+
+figure
+plot(t,squeeze(epg180(3,2,:)),t,squeeze(epg180(6,4,:)),t,squeeze(epg180(9,6,:)),t,squeeze(epg180(12,8,:)),t,squeeze(epg180(14,9,:)))
+title("Amplitudes for a = 180")
+
+
+figure
+plot(t,squeeze(epg120(3,2,:)),t,squeeze(epg120(6,4,:)),t,squeeze(epg120(9,6,:)),t,squeeze(epg120(12,8,:)),t,squeeze(epg120(14,9,:)))
+title("Amplitudes for a = 120")
+
+figure
+plot(t,squeeze(epg60(3,2,:)),t,squeeze(epg60(6,4,:)),t,squeeze(epg60(9,6,:)),t,squeeze(epg60(12,8,:)),t,squeeze(epg60(14,9,:)))
+title("Amplitudes for a = 60")
+
+%%
+figure
+subplot(2,2,1)
+contour(T2,T1,epg180(:,:,6))
+title("6th Echo: a=180")
+ylabel("T1 (ms)")
+xlabel('T2 (ms)')
+subplot(2,2,2)
+contour(T2,T1,epg180(:,:,16))
+title("16th Echo: a=180")
+ylabel("T1 (ms)")
+xlabel('T2 (ms)')
+subplot(2,2,3)
+contour(T2,T1,epg180(:,:,32))
+title("32nd Echo: a=180")
+ylabel("T1 (ms)")
+xlabel('T2 (ms)')
+subplot(2,2,4)
+contour(T2,T1,epg180(:,:,64))
+title("64th Echo: a=180")
+ylabel("T1 (ms)")
+xlabel('T2 (ms)')
+
+figure
+subplot(2,2,1)
+contour(T2,T1,epg120(:,:,6))
+title("6th Echo: a=120")
+ylabel("T1 (ms)")
+xlabel('T2 (ms)')
+subplot(2,2,2)
+contour(T2,T1,epg120(:,:,16))
+title("16th Echo: a=120")
+ylabel("T1 (ms)")
+xlabel('T2 (ms)')
+subplot(2,2,3)
+contour(T2,T1,epg120(:,:,32))
+title("32nd Echo: a=120")
+ylabel("T1 (ms)")
+xlabel('T2 (ms)')
+subplot(2,2,4)
+contour(T2,T1,epg120(:,:,64))
+title("64th Echo: a=120")
+ylabel("T1 (ms)")
+xlabel('T2 (ms)')
+
+figure
+subplot(2,2,1)
+contour(T2,T1,epg60(:,:,6))
+title("6th Echo: a=60")
+ylabel("T1 (ms)")
+xlabel('T2 (ms)')
+subplot(2,2,2)
+contour(T2,T1,epg60(:,:,16))
+title("16th Echo: a=60")
+ylabel("T1 (ms)")
+xlabel('T2 (ms)')
+subplot(2,2,3)
+contour(T2,T1,epg60(:,:,32))
+title("32nd Echo: a=60")
+ylabel("T1 (ms)")
+xlabel('T2 (ms)')
+subplot(2,2,4)
+contour(T2,T1,epg60(:,:,64))
+title("64th Echo: a=60")
+ylabel("T1 (ms)")
+xlabel('T2 (ms)')
+
+%% Problem 2
+
+load("brain_maps.mat")
+mirtdir = '/home/jpothoof/MATLAB/Projects/mirt/';
+curdir = cd(mirtdir); setup; cd(curdir);
+addpath("Homework1/")
+
+% T1 weighted
+T1_te = 15;
+T1_tr = 500;
+T1_weight = zeros(size(T1map));
+
+for i = 1:length(T1map)
+    for j = 1:length(T1map)
+        [Msig,~] = sesignal1(T1map(i,j), T2map(i,j),T1_te,T1_tr,0,M0map(i,j));
+        T1_weight(i,j) = Msig;
+    end
+end
+
+
+% T2 weighted
+T2_te = 100;
+T2_tr = 6000;
+T2_weight = zeros(size(T1map));
+for i = 1:length(T1map)
+    for j = 1:length(T1map)
+        [Msig,~] = sesignal1(T1map(i,j), T2map(i,j),T2_te,T2_tr,0,M0map(i,j));
+        T2_weight(i,j) = Msig;
+    end
+end
+
+% PD weighted
+
+TP_te = 15;
+TP_tr = 4000;
+PD_weight = zeros(size(T1map));
+for i = 1:length(T1map)
+    for j = 1:length(T1map)
+        [Msig,~] = sesignal1(T1map(i,j), T2map(i,j),TP_te,TP_tr,0,M0map(i,j));
+        PD_weight(i,j) = Msig;
+    end
+end
+
+figure
+subplot(1,3,1)
+im(T1_weight)
+title("T1 Weighted Image")
+
+subplot(1,3,2)
+im(T2_weight)
+title("T2 Weighted Image")
+
+subplot(1,3,3)
+im(PD_weight)
+title("PD Weighted Image")
+
+%% 2b ii,iii
+echo_times = 5*[1:32];
+T1_2 = [1000,1000,2000,2000];
+T2_2 = [50,100,50,100];
+TR = 3;
+ETL = 32;
+FA = 180*pi/180;
+ESP = 5;
+
+for i = 1:4
+        [sp,~,~] = epg_cpmg_multi_tr(FA,ETL,T1_2(i),T2_2(i),ESP,TR,5,1,0);
+        s(i,:) = sp;
+end
+
+% 
+figure
+subplot(2,2,1)
+plot(echo_times,abs(s(1,:)))
+title("FSE Signal: T1=1000 T2=50")
+ylim(0:1)
+subplot(2,2,2)
+plot(echo_times,abs(s(2,:)))
+title("FSE Signal: T1=1000 T2=100")
+ylim(0:1)
+subplot(2,2,3)
+plot(echo_times,abs(s(3,:)))
+title("FSE Signal: T1=2000 T2=50")
+y(0:1)
+subplot(2,2,4)
+plot(echo_times,abs(s(4,:)))
+title("FSE Signal: T1=2000 T2=100")
+yscale(0:1)
+%%
+% 2bii
+
+for i = 1:256
+    for j = 1:256
+        if T1map(i,j) ~= 0
+        [sp,~,~] = epg_cpmg_multi_tr(FA,ETL,T1map(i,j),T2map(i,j),ESP,TR,1,M0map(i,j),0);
+        stel(i,j,:) = abs(sp);
+        end
+    end
+end
+%
+
+echo80 = stel(:,:,16);
+echo40 = stel(:,:,8);
+echo120 = stel(:,:,24);
+
+figure
+im(echo80)
+title("Echotime = 80")
+
+figure
+im(echo40)
+title("Echotime = 40")
+
+figure
+im(echo120)
+title("Echotime = 120")
+%% 2b iv
+etl2 = [16,32, 64,128];
+
+for i = 1:256
+    for j = 1:256
+        if T1map(i,j) ~= 0
+        [sp,~,~] = epg_cpmg_multi_tr(FA,etl2(1),T1map(i,j),T2map(i,j),ESP,TR,1,M0map(i,j),0);
+        stel16(i,j,:) = abs(sp);
+        end
+    end
+end
+
+for i = 1:256
+    for j = 1:256
+        if T1map(i,j) ~= 0
+        [sp,~,~] = epg_cpmg_multi_tr(FA,etl2(2),T1map(i,j),T2map(i,j),ESP,TR,1,M0map(i,j),0);
+        stel132(i,j,:) = abs(sp);
+        end
+    end
+end
+
+for i = 1:256
+    for j = 1:256
+        if T1map(i,j) ~= 0
+        [sp,~,~] = epg_cpmg_multi_tr(FA,etl2(3),T1map(i,j),T2map(i,j),ESP,TR,1,M0map(i,j),0);
+        stel64(i,j,:) = abs(sp);
+        end
+    end
+end
+
+for i = 1:256
+    for j = 1:256
+        if T1map(i,j) ~= 0
+        [sp,~,~] = epg_cpmg_multi_tr(FA,etl2(4),T1map(i,j),T2map(i,j),ESP,TR,1,M0map(i,j),0);
+        stel128(i,j,:) = abs(sp);
+        end
+    end
+end
+
+
+
+
+
+
